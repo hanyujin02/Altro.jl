@@ -5,15 +5,26 @@ import RobotZoo
 using StaticArrays, LinearAlgebra
 using RobotDynamics
 using Plots
+using JuMP
+# using RigidBodyDynamics
+
+traj_folder = joinpath(dirname(pathof(TrajectoryOptimization)),"..")
+urdf_folder = joinpath(traj_folder, "dynamics","urdf")
+urdf_kuka_orig = joinpath(urdf_folder, "kuka_iiwa.urdf")
 urdf_kuka = joinpath(urdf_folder, "temp","kuka.urdf")
 const RD = RobotDynamics
 
+# print("urdf_kuka: ", urdf_kuka)
+# print("\n")
+# print("urdf_kuka_orig: ", urdf_kuka_orig)
+
 # Use the Cartpole model from RobotZoo
+RobotZoo.kuka.write_kuka_urdf()
 model = Model(urdf_kuka)
-n,m = RD.dims(model)
-print("n: ", n)
-print("\n") 
-print("m: ", m)
+# n,m = RD.dims(model)
+# print("n: ", n)
+# print("\n") 
+# print("m: ", m)
 
 # # Define model discretization
 # N = 101

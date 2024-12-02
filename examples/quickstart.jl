@@ -50,21 +50,89 @@ opts = SolverOptions(
 altro = ALTROSolver(prob, opts)
 solve!(altro)
 
-# Get some info on the solve
-max_violation(altro)  # 5.896e-7
-cost(altro)           # 1.539
-iterations(altro)     # 44
+println("max_violation: ", max_violation(altro))
+println("cost:          ", cost(altro))
+println("iterations:    ", iterations(altro));
 
 # Extract the solution
 X = states(altro)
 U = controls(altro)
 
-# Extract the solver statistics
-stats = Altro.stats(altro)   # alternatively, solver.stats
-stats.iterations             # 44, equivalent to iterations(solver)
-stats.iterations_outer       # 4 (number of Augmented Lagrangian iterations)
-stats.iterations_pn          # 1 (number of projected newton iterations)
-stats.cost[end]              # terminal cost
-stats.c_max[end]             # terminal constraint satisfaction
-stats.gradient[end]          # terminal gradient of the Lagrangian
-dstats = Dict(stats)         # get the per-iteration stats as a dictionary (can be converted to DataFrame)
+hcat(Vector.(X)...)
+
+# solve with ilqr
+ilqr = Altro.iLQRSolver(prob, opts)
+initial_controls!(ilqr, U0)
+solve!(ilqr)
+
+
+using Ipopt
+using MathOptInterface
+const MOI = MathOptInterface
+
+# # Copy problem to avoid modifying the original problem
+# prob_nlp = copy(prob)
+
+# # Add the dynamics and initial conditions as explicit constraints
+# TrajectoryOptimization.add_dynamics_constraints!(prob_nlp)
+
+# # Reset our initial guess
+# initial_controls!(prob_nlp, U0)
+# rollout!(prob_nlp)
+
+# # Create the NLP
+# nlp = TrajOptNLP(prob_nlp, remove_bounds=true, jac_type=:vector);
+
+# optimizer = Ipopt.Optimizer()
+# TrajectoryOptimization.build_MOI!(nlp, optimizer)
+# MOI.optimize!(optimizer)
+# MOI.get(optimizer, MOI.TerminationStatus())
+
+# println("max_violation: ", max_violation(nlp))
+# println("cost:          ", cost(nlp));
+
+# using BenchmarkTools
+
+# # Reset initial guess and then benchmark ALTRO solver
+# initial_controls!(altro, U0)
+# b_altro = benchmark_solve!(altro)
+
+# # Reset initial guess and benchmark Ipopt solver
+# initial_controls!(prob_nlp, U0)
+# rollout!(prob_nlp)
+# nlp = TrajOptNLP(prob_nlp, remove_bounds=true, jac_type=:vector)
+# Z0 = copy(TrajectoryOptimization.get_trajectory(nlp).Z)
+
+# optimizer = Ipopt.Optimizer(print_level=0)
+# TrajectoryOptimization.build_MOI!(nlp, optimizer)
+# Z = MOI.VariableIndex.(1:length(Z0))
+# b_ipopt = @benchmark begin
+#     MOI.optimize!($optimizer)
+#     MOI.set($optimizer, MOI.VariablePrimalStart(), $Z, $Z0)
+#     MOI.get($optimizer, MOI.TerminationStatus())
+# end
+
+# using Statistics
+# @show cost(nlp)
+# @show cost(altro)
+# @show max_violation(nlp)
+# @show max_violation(altro)
+# jdg = judge(median(b_altro), median(b_ipopt))
+# println("Speed improvement: ", round(1/ratio(jdg).time), "x")
+# jdg
+
+using TrajOptPlots
+using MeshCat
+using Plots
+
+vis = Visualizer()
+render(vis)
+
+TrajOptPlots.set_mesh!(vis, model)
+visualize!(vis, altro);
+# visualize!(vis, model, TrajectoryOptimization.get_trajectory(nlp));
+# visualize!(vis, altro, nlp);
+
+visualize!(vis, model, get_trajectory(altro), get_trajectory(nlp));
+
+delete!(vis["robot_copies"]);
