@@ -70,8 +70,8 @@ using Ipopt
 using MathOptInterface
 const MOI = MathOptInterface
 
-# # Copy problem to avoid modifying the original problem
-# prob_nlp = copy(prob)
+# Copy problem to avoid modifying the original problem
+prob_nlp = copy(prob)
 
 # # Add the dynamics and initial conditions as explicit constraints
 # TrajectoryOptimization.add_dynamics_constraints!(prob_nlp)
@@ -121,18 +121,18 @@ const MOI = MathOptInterface
 # println("Speed improvement: ", round(1/ratio(jdg).time), "x")
 # jdg
 
-using TrajOptPlots
-using MeshCat
-using Plots
+# using TrajOptPlots
+# using MeshCat
+# using Plots
 
-vis = Visualizer()
-render(vis)
+# vis = Visualizer()
+# render(vis)
 
-TrajOptPlots.set_mesh!(vis, model)
-visualize!(vis, altro);
-# visualize!(vis, model, TrajectoryOptimization.get_trajectory(nlp));
-# visualize!(vis, altro, nlp);
+# TrajOptPlots.set_mesh!(vis, model)
+# visualize!(vis, altro);
+# # visualize!(vis, model, TrajectoryOptimization.get_trajectory(nlp));
+# # visualize!(vis, altro, nlp);
 
-visualize!(vis, model, get_trajectory(altro), get_trajectory(nlp));
+# visualize!(vis, model, get_trajectory(altro), get_trajectory(nlp));
 
-delete!(vis["robot_copies"]);
+# delete!(vis["robot_copies"]);
