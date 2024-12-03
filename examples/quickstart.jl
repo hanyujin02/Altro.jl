@@ -4,15 +4,18 @@ using Altro
 import RobotZoo.Cartpole
 using StaticArrays, LinearAlgebra
 using RobotDynamics
+using Plots
 const RD = RobotDynamics
 
 # Use the Cartpole model from RobotZoo
 model = Cartpole()
 n,m = RD.dims(model)
+println("n: ", n)   
+println("m: ", m)
 
 # Define model discretization
-N = 101
-tf = 5.
+N = 41
+tf = 2.
 dt = tf/(N-1)
 
 # Define initial and final conditions
@@ -20,21 +23,21 @@ x0 = @SVector zeros(n)
 xf = @SVector [0, pi, 0, 0]  # i.e. swing up
 
 # Set up
-Q = 1.0e-2*Diagonal(@SVector ones(n)) * dt
+Q = 1.0e-5*Diagonal(@SVector ones(n))
 Qf = 100.0*Diagonal(@SVector ones(n))
 R = 1.0e-1*Diagonal(@SVector ones(m)) * dt
 obj = LQRObjective(Q,R,Qf,xf,N)
 
 # Add constraints
 conSet = ConstraintList(n,m,N)
-u_bnd = 3.0
+u_bnd = 10.0
 bnd = BoundConstraint(n,m, u_min=-u_bnd, u_max=u_bnd)
 goal = GoalConstraint(xf)
 add_constraint!(conSet, bnd, 1:N-1)
 add_constraint!(conSet, goal, N)
 
 # Initialization
-u0 = @SVector fill(0.01,m)
+u0 = @SVector fill(5.0,m)
 U0 = [u0 for k = 1:N-1]
 
 # Define problem
@@ -43,7 +46,7 @@ initial_controls!(prob, U0)
 
 # Solve with ALTRO
 opts = SolverOptions(
-    cost_tolerance_intermediate=1e-2,
+    cost_tolerance_intermediate=1e-5,
     penalty_scaling=10.,
     penalty_initial=1.0
 )
@@ -58,30 +61,55 @@ println("iterations:    ", iterations(altro));
 X = states(altro)
 U = controls(altro)
 
-hcat(Vector.(X)...)
+#plot position over time and volecity over time
+plot1 = plot(1:N, [x[1] for x in X], label="p")
+plot!(1:N, [x[2] for x in X], label="theta")
+plot!(1:N, [x[3] for x in X], label="p_dot")
+plot!(1:N, [x[4] for x in X], label="theta_dot")
+
+# on a separate plot, plot control over time
+plot2 = plot(1:N-1, [u[1] for u in U], label="Control")
+
 
 # solve with ilqr
 ilqr = Altro.iLQRSolver(prob, opts)
 initial_controls!(ilqr, U0)
 solve!(ilqr)
 
+X = states(ilqr)
+U = controls(ilqr)
 
-using Ipopt
-using MathOptInterface
-const MOI = MathOptInterface
+#plot position over time and volecity over time
+plot3 = plot(1:N, [x[1] for x in X], label="p")
+plot!(1:N, [x[2] for x in X], label="theta")
+plot!(1:N, [x[3] for x in X], label="p_dot")
+plot!(1:N, [x[4] for x in X], label="theta_dot")
 
-# Copy problem to avoid modifying the original problem
-prob_nlp = copy(prob)
+# on a separate plot, plot control over time
+plot4 = plot(1:N-1, [u[1] for u in U], label="Control")
 
-# # Add the dynamics and initial conditions as explicit constraints
+display(plot1)
+display(plot2)
+display(plot3)
+display(plot4)
+
+# using Ipopt
+# using MathOptInterface
+# const MOI = MathOptInterface
+
+# # Copy problem to avoid modifying the original problem
+# # prob_nlp = copy(prob)
+# prob_nlp = Problem(model, obj, x0, tf, xf=xf, constraints=conSet)
+
+# # # Add the dynamics and initial conditions as explicit constraints
 # TrajectoryOptimization.add_dynamics_constraints!(prob_nlp)
 
 # # Reset our initial guess
 # initial_controls!(prob_nlp, U0)
 # rollout!(prob_nlp)
 
-# # Create the NLP
-# nlp = TrajOptNLP(prob_nlp, remove_bounds=true, jac_type=:vector);
+# Create the NLP
+nlp = TrajOptNLP(prob_nlp, remove_bounds=true, jac_type=:vector);
 
 # optimizer = Ipopt.Optimizer()
 # TrajectoryOptimization.build_MOI!(nlp, optimizer)
