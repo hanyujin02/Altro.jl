@@ -23,7 +23,7 @@ x0 = @SVector zeros(n)
 xf = @SVector [0, pi, 0, 0]  # i.e. swing up
 
 # Set up
-Q = 1.0e-5*Diagonal(@SVector ones(n))
+Q = 0.5*Diagonal(@SVector ones(n)) * dt
 Qf = 100.0*Diagonal(@SVector ones(n))
 R = 1.0e-1*Diagonal(@SVector ones(m)) * dt
 obj = LQRObjective(Q,R,Qf,xf,N)
